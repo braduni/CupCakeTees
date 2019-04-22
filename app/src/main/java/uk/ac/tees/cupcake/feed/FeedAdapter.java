@@ -93,6 +93,9 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.FeedViewHolder
         holder.postDescriptionTextView.setText(post.getDescription());
         holder.postDateTextView.setText(ago);
 
+        String locationText = post.getLocation() == null ? "Not set" : post.getLocation();
+        holder.postLocationTextView.setText(locationText);
+
         if(post.getImageUrl() != null) {
             Picasso.with(holder.itemView.getContext())
                    .load(post.getImageUrl())
@@ -223,6 +226,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.FeedViewHolder
         private TextView postProfileNameTextView;
         private TextView postLikesCountTextView;
         private TextView postLikeButtonTextView;
+        private TextView postLocationTextView;
         private Context context;
 
         private ImageView postImageImageView;
@@ -241,6 +245,7 @@ public class FeedAdapter extends RecyclerView.Adapter<FeedAdapter.FeedViewHolder
             postDateTextView = postView.findViewById(R.id.feed_post_time_posted_text_view);
             postLikesCountTextView = postView.findViewById(R.id.feed_post_likes_count_text_view);
             postLikeButtonTextView = postView.findViewById(R.id.feed_post_like_button_text_view);
+            postLocationTextView = postView.findViewById(R.id.feed_post_location_text_view);
 
             postImageImageView = postView.findViewById(R.id.feed_post_image_image_view);
             postProfilePictureImageView = postView.findViewById(R.id.feed_post_profile_picture_image_view);

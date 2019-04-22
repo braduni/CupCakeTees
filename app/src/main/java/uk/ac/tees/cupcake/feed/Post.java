@@ -11,6 +11,8 @@ public class Post  {
 
     private String userUid;
 
+    private String location;
+
     @ServerTimestamp
     private Date timeStamp;
 
@@ -24,6 +26,10 @@ public class Post  {
         this.userUid = userUid;
         this.description = description;
     }
+
+    public String getLocation() { return location;}
+
+    public String setLocation(){ return location; }
 
     public String getUserUid() {
         return userUid;

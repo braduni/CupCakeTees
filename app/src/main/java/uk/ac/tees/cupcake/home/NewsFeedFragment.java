@@ -11,10 +11,16 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentChange;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -27,7 +33,7 @@ import uk.ac.tees.cupcake.feed.Post;
 public class NewsFeedFragment extends Fragment {
 
     private FeedAdapter mFeedAdapter;
-    private CollectionReference collectionReference;
+    private CollectionReference usersCollectionReference;
     private ArrayList<Post> mPosts = new ArrayList<>();
 
     @Nullable
@@ -37,7 +43,7 @@ public class NewsFeedFragment extends Fragment {
 
         // Initialise
         RecyclerView recyclerView = view.findViewById(R.id.feed_recycler_view);
-        collectionReference = FirebaseFirestore.getInstance().collection("Users");
+        usersCollectionReference = FirebaseFirestore.getInstance().collection("Users");
 
         //Layout
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(getContext());
@@ -49,41 +55,82 @@ public class NewsFeedFragment extends Fragment {
         recyclerView.setAdapter(mFeedAdapter);
 
         //Get all user posts.
-        getAllPosts();
+        getAllPostsQuery();
 
+        //getAllFollowingPostsQuery();
         return view;
     }
 
     /**
      * Gets all posts from each user, orders then by date of post.
      */
-    private void getAllPosts(){
+    private void getAllPostsQuery(){
         TreeMap<Date, Post> allPosts = new TreeMap<>();
 
-        collectionReference.get()
-                           .addOnSuccessListener(documentSnapshots -> {
-                               // Iterates "Users" collection
-                               for(DocumentSnapshot documentSnapshot : documentSnapshots){
-                                   //Users to "User Posts"
-                                   documentSnapshot.getReference()
-                                                   .collection("User Posts")
-                                                   .get()
-                                                   .addOnSuccessListener(documentSnapshots1 -> {
-                                                       // Iterates all "Users Posts" and adds each one to allPosts
-                                                       // TreeMap with TimeStamp as Key and Post as value.
-                                                       for(DocumentSnapshot documentSnapshot1 : documentSnapshots1){
-                                                           Post currentDoc = documentSnapshot1.toObject(Post.class);
-                                                           allPosts.put(currentDoc.getTimeStamp(), currentDoc);
-                                                       }
+        usersCollectionReference.get()
+                                .addOnSuccessListener(documentSnapshots -> {
+                                    // Iterates "Users" collection
+                                    for(DocumentSnapshot documentSnapshot : documentSnapshots){
+                                        //Users to "User Posts"
+                                        documentSnapshot.getReference()
+                                                        .collection("User Posts")
+                                                        .get()
+                                                        .addOnSuccessListener(documentSnapshots1 -> {
+                                                            // Iterates all "Users Posts" and adds each one to allPosts
+                                                            // TreeMap with TimeStamp as Key and Post as value.
+                                                            for(DocumentSnapshot documentSnapshot1 : documentSnapshots1){
+                                                                Post currentDoc = documentSnapshot1.toObject(Post.class);
+                                                                allPosts.put(currentDoc.getTimeStamp(), currentDoc);
+                                                            }
 
-                                                       // Removes all current posts in mPost array, adds all values in allPost treeMap in descending order.
-                                                       mPosts.clear();
-                                                       mPosts.addAll(allPosts.descendingMap().values());
+                                                            // Removes all current posts in mPost array, adds all values in allPost treeMap in descending order.
+                                                            mPosts.clear();
+                                                            mPosts.addAll(allPosts.descendingMap().values());
 
-                                                       mFeedAdapter.notifyDataSetChanged();
-                                                   });
-                               }
-                           });
+                                                            mFeedAdapter.notifyDataSetChanged();
+                                                        });
+                                    }
+                                });
+    }
+
+    private void getAllFollowingPostsQuery(){
+
+        TreeMap<Date, Post> allFollowersPosts = new TreeMap<>();
+        String currentUserUid = FirebaseAuth.getInstance()
+                                            .getCurrentUser()
+                                            .getUid();
+
+        usersCollectionReference.document(currentUserUid)
+                                .collection("Following")
+                                .get()
+                                .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
+                                    @Override
+                                    public void onSuccess(QuerySnapshot documentSnapshots) {
+                                        // Iterates through each active users followers
+                                        for(DocumentSnapshot documentSnapshot : documentSnapshots){
+
+                                            usersCollectionReference.document(documentSnapshot.getReference()
+                                                                    .getId())
+                                                                    .collection("User Posts")
+                                                                    .get()
+                                                                    .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
+                                                                        @Override
+                                                                        public void onSuccess(QuerySnapshot documentSnapshots) {
+
+                                                                            for(DocumentSnapshot documentSnapshot1 : documentSnapshots){
+                                                                                Post currentDoc = documentSnapshot1.toObject(Post.class);
+                                                                                allFollowersPosts.put(currentDoc.getTimeStamp(), currentDoc);
+                                                                            }
+
+                                                                            mPosts.clear();
+                                                                            mPosts.addAll(allFollowersPosts.descendingMap().values());
+
+                                                                            mFeedAdapter.notifyDataSetChanged();
+                                                                        }
+                                                                    });
+                                        }
+                                    }
+                                });
     }
 
 }
